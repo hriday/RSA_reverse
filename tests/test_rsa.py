@@ -2,7 +2,7 @@ import random
 import unittest
 
 from rsa_poc.primes import is_prime
-from rsa_poc.rsa import decrypt, derive_private_key, encrypt, keygen
+from rsa_poc.rsa import blocks_to_text, decrypt, derive_private_key, encrypt, keygen, text_to_blocks
 
 
 class TestKeygen(unittest.TestCase):
@@ -48,9 +48,6 @@ class TestDerivePrivateKey(unittest.TestCase):
         self.assertEqual(rebuilt["n"], priv["n"])
         self.assertEqual(rebuilt["e"], priv["e"])
         self.assertEqual(rebuilt["d"], priv["d"])
-
-
-from rsa_poc.rsa import blocks_to_text, text_to_blocks
 
 
 class TestTextRoundTrip(unittest.TestCase):
