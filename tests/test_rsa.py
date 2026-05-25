@@ -50,5 +50,42 @@ class TestDerivePrivateKey(unittest.TestCase):
         self.assertEqual(rebuilt["d"], priv["d"])
 
 
+from rsa_poc.rsa import blocks_to_text, text_to_blocks
+
+
+class TestTextRoundTrip(unittest.TestCase):
+    def _round_trip(self, text):
+        pub, priv = keygen(digits=6)
+        blocks = text_to_blocks(text, pub["n"])
+        encrypted = [encrypt(pub, m) for m in blocks]
+        decrypted = [decrypt(priv, c) for c in encrypted]
+        total_len = len(text.encode("utf-8"))
+        recovered = blocks_to_text(decrypted, pub["n"], total_len)
+        self.assertEqual(recovered, text)
+
+    def test_ascii_message(self):
+        self._round_trip("attack at dawn")
+
+    def test_utf8_message(self):
+        self._round_trip("café — déjà vu — naïve")
+
+    def test_empty_message(self):
+        self._round_trip("")
+
+    def test_single_byte_message(self):
+        self._round_trip("a")
+
+    def test_message_with_leading_null_byte_in_block(self):
+        # Forces a block whose top byte is 0x00 — exercises the length-trim path.
+        self._round_trip("\x00hello\x00world")
+
+    def test_text_to_blocks_each_block_less_than_n(self):
+        pub, _ = keygen(digits=6)
+        blocks = text_to_blocks("the quick brown fox jumps over the lazy dog", pub["n"])
+        for m in blocks:
+            self.assertLess(m, pub["n"])
+            self.assertGreaterEqual(m, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

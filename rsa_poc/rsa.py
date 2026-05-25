@@ -47,3 +47,43 @@ def encrypt(pub: dict, m: int) -> int:
 
 def decrypt(priv: dict, c: int) -> int:
     return pow(c, priv["d"], priv["n"])
+
+
+def _block_size(n: int) -> int:
+    size = (n.bit_length() - 1) // 8
+    if size < 1:
+        raise ValueError(f"n={n} is too small to encode even one byte per block")
+    return size
+
+
+def text_to_blocks(text: str, n: int) -> list[int]:
+    data = text.encode("utf-8")
+    if not data:
+        return []
+    size = _block_size(n)
+    blocks = []
+    for i in range(0, len(data), size):
+        chunk = data[i : i + size]
+        blocks.append(int.from_bytes(chunk, "big"))
+    return blocks
+
+
+def blocks_to_text(blocks: list[int], n: int, total_len: int) -> str:
+    if total_len == 0:
+        return ""
+    size = _block_size(n)
+    if not blocks:
+        raise ValueError("blocks empty but total_len > 0")
+    out = bytearray()
+    for i, m in enumerate(blocks):
+        is_last = i == len(blocks) - 1
+        if is_last:
+            remaining = total_len - size * (len(blocks) - 1)
+            if remaining < 1 or remaining > size:
+                raise ValueError(
+                    f"total_len={total_len} inconsistent with {len(blocks)} blocks of size {size}"
+                )
+            out.extend(m.to_bytes(remaining, "big"))
+        else:
+            out.extend(m.to_bytes(size, "big"))
+    return out.decode("utf-8")
