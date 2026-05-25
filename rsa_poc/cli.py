@@ -80,7 +80,10 @@ def _cmd_encrypt(args) -> int:
     if args.message is not None:
         text = args.message
     else:
-        text = args.message_file.read_text(encoding="utf-8")
+        try:
+            text = args.message_file.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise ValueError(f"{args.message_file}: file not found") from exc
     blocks_plain = rsa.text_to_blocks(text, pub["n"])
     blocks_cipher = [rsa.encrypt(pub, m) for m in blocks_plain]
     total_len = len(text.encode("utf-8"))
@@ -123,6 +126,7 @@ def _cmd_break(args) -> int:
     t_decrypt = time.perf_counter() - t0
 
     if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(plaintext, encoding="utf-8")
         sys.stderr.write(f"wrote {args.out}\n")
     else:

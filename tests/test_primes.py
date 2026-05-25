@@ -1,6 +1,6 @@
 import unittest
 
-from rsa_poc.primes import is_prime
+from rsa_poc.primes import is_prime, random_prime
 
 
 def _trial_division(n):
@@ -40,9 +40,6 @@ class TestIsPrime(unittest.TestCase):
         self.assertFalse(is_prime(1))
         self.assertTrue(is_prime(2))
         self.assertTrue(is_prime(3))
-
-
-from rsa_poc.primes import random_prime
 
 
 class TestRandomPrime(unittest.TestCase):

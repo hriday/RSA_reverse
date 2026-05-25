@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import secrets
+
 # Deterministic Miller-Rabin witnesses sufficient for n < 3,317,044,064,679,887,385,961,981.
 # Reference: https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test#Testing_against_small_sets_of_bases
 _DETERMINISTIC_WITNESSES = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
@@ -33,9 +35,6 @@ def is_prime(n: int) -> bool:
         else:
             return False
     return True
-
-
-import secrets
 
 
 def random_prime(digits: int) -> int:
