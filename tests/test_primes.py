@@ -42,5 +42,26 @@ class TestIsPrime(unittest.TestCase):
         self.assertTrue(is_prime(3))
 
 
+from rsa_poc.primes import random_prime
+
+
+class TestRandomPrime(unittest.TestCase):
+    def test_returns_prime_with_exact_digit_count(self):
+        for digits in (3, 4, 5, 6):
+            for _ in range(5):
+                p = random_prime(digits)
+                with self.subTest(digits=digits, p=p):
+                    self.assertEqual(len(str(p)), digits)
+                    self.assertTrue(is_prime(p))
+
+    def test_rejects_digits_below_two(self):
+        with self.assertRaises(ValueError):
+            random_prime(1)
+        with self.assertRaises(ValueError):
+            random_prime(0)
+        with self.assertRaises(ValueError):
+            random_prime(-3)
+
+
 if __name__ == "__main__":
     unittest.main()

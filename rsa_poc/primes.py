@@ -33,3 +33,22 @@ def is_prime(n: int) -> bool:
         else:
             return False
     return True
+
+
+import secrets
+
+
+def random_prime(digits: int) -> int:
+    if digits < 2:
+        raise ValueError(f"digits must be >= 2, got {digits}")
+    lo = 10 ** (digits - 1)
+    hi = 10 ** digits  # exclusive
+    span = hi - lo
+    while True:
+        candidate = lo + secrets.randbelow(span)
+        if candidate % 2 == 0:
+            candidate += 1
+            if candidate >= hi:
+                continue
+        if is_prime(candidate):
+            return candidate
