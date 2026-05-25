@@ -27,13 +27,18 @@ def load_private(path: str | Path) -> dict:
 
 def save_ciphertext(path: str | Path, blocks: list[int], total_len: int) -> None:
     p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
     lines = [str(total_len)] + [str(b) for b in blocks]
     p.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def load_ciphertext(path: str | Path) -> tuple[list[int], int]:
     p = Path(path)
-    raw = p.read_text(encoding="utf-8").splitlines()
+    try:
+        text = p.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise ValueError(f"{p}: file not found") from exc
+    raw = text.splitlines()
     if not raw:
         raise ValueError(f"{p}: ciphertext file is empty")
     try:
@@ -61,7 +66,11 @@ def _write_json(path: str | Path, data: dict) -> None:
 def _read_required(path: str | Path, fields: tuple[str, ...]) -> dict:
     p = Path(path)
     try:
-        data = json.loads(p.read_text(encoding="utf-8"))
+        text = p.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise ValueError(f"{p}: file not found") from exc
+    try:
+        data = json.loads(text)
     except json.JSONDecodeError as exc:
         raise ValueError(f"{p}: invalid JSON: {exc.msg}") from exc
     missing = [f for f in fields if f not in data]
