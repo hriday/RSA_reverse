@@ -21,7 +21,7 @@ python -m rsa_poc generate --digits 6 --out-dir keys/
 python -m rsa_poc encrypt --key keys/pub.json --message "attack at dawn" --out ciphertext.txt
 ```
 
-### Attacker side (only sees `pub.json` + `ciphertext.txt`)
+### Attacker side (only sees `pub.json` + optional `ciphertext.txt`)
 
 ```bash
 # Just factor n
@@ -29,12 +29,24 @@ python -m rsa_poc factor --key keys/pub.json
 # n = 97134618697
 # p = 174121
 # q = 557857
-# factored in 0.0001s
+# factored in 0.0001s using brent
 
-# Full break — recover the plaintext
+# Recover the full private key from the public key alone (no ciphertext needed)
+python -m rsa_poc break --key keys/pub.json
+# n = 97134618697
+# e = 65537
+# d = 12345678901
+# p = 174121
+# q = 557857
+# # timing: factor=0.0004s (brent)  derive_d=0.000003s
+
+# Or save the recovered key to a file
+python -m rsa_poc break --key keys/pub.json --out recovered-priv.json
+
+# Full break — also decrypt a ciphertext
 python -m rsa_poc break --key keys/pub.json --ciphertext-file ciphertext.txt
 # attack at dawn
-# # timing: factor=0.0004s  derive_d=0.000003s  decrypt=0.000024s
+# # timing: factor=0.0004s (brent)  derive_d=0.000003s  decrypt=0.000024s
 ```
 
 ## CLI
@@ -44,7 +56,7 @@ python -m rsa_poc break --key keys/pub.json --ciphertext-file ciphertext.txt
 | `generate` | `--out-dir` | `--digits N` (default 6, range 2–32; >14 prints a warning about factoring cost), `--e E` (default 65537) |
 | `encrypt` | `--key`, `--out`, one of `--message`/`--message-file` | |
 | `factor` | `--key` | `--algorithm {brent,floyd}` (default `brent`), `--verbose`, `--seed S` |
-| `break` | `--key`, `--ciphertext-file` | `--algorithm {brent,floyd}` (default `brent`), `--out`, `--verbose`, `--seed S` |
+| `break` | `--key` | `--ciphertext-file` (also decrypt it), `--algorithm {brent,floyd}` (default `brent`), `--out` (plaintext if `--ciphertext-file` set, else recovered `priv.json`), `--verbose`, `--seed S` |
 
 ## How it works
 

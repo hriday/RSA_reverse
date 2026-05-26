@@ -52,10 +52,30 @@ def _build_parser() -> argparse.ArgumentParser:
     f.add_argument("--seed", type=int)
     f.set_defaults(func=_cmd_factor)
 
-    b = sub.add_parser("break", help="factor n and decrypt ciphertext")
+    b = sub.add_parser(
+        "break",
+        help=(
+            "factor n and recover the private key from a public key; "
+            "with --ciphertext-file, also decrypt it"
+        ),
+    )
     b.add_argument("--key", required=True, type=Path)
-    b.add_argument("--ciphertext-file", required=True, type=Path)
-    b.add_argument("--out", type=Path)
+    b.add_argument(
+        "--ciphertext-file",
+        type=Path,
+        help=(
+            "optional; if given, decrypt this ciphertext with the recovered key. "
+            "If omitted, just print the recovered private key."
+        ),
+    )
+    b.add_argument(
+        "--out",
+        type=Path,
+        help=(
+            "with --ciphertext-file, write recovered plaintext here; "
+            "without --ciphertext-file, write the recovered priv.json here"
+        ),
+    )
     b.add_argument(
         "--algorithm",
         choices=list(factor_mod.ALGORITHMS),
@@ -125,7 +145,6 @@ def _cmd_factor(args) -> int:
 
 def _cmd_break(args) -> int:
     pub = keyfile.load_public(args.key)
-    blocks, total_len = keyfile.load_ciphertext(args.ciphertext_file)
     rng = random.Random(args.seed) if args.seed is not None else None
 
     t0 = time.perf_counter()
@@ -135,6 +154,27 @@ def _cmd_break(args) -> int:
     t0 = time.perf_counter()
     priv = rsa.derive_private_key(p, q, pub["e"])
     t_derive = time.perf_counter() - t0
+
+    if args.ciphertext_file is None:
+        # Key-recovery mode: print (or save) the recovered private key.
+        if args.out is not None:
+            keyfile.save_private(args.out, priv)
+            sys.stderr.write(f"wrote {args.out}\n")
+        else:
+            print(f"n = {priv['n']}")
+            print(f"e = {priv['e']}")
+            print(f"d = {priv['d']}")
+            print(f"p = {priv['p']}")
+            print(f"q = {priv['q']}")
+        sys.stderr.write(
+            f"# timing: factor={t_factor:.4f}s ({args.algorithm})  "
+            f"derive_d={t_derive:.6f}s\n"
+        )
+        if args.verbose:
+            sys.stderr.write(f"# n bit length: {pub['n'].bit_length()}\n")
+        return 0
+
+    blocks, total_len = keyfile.load_ciphertext(args.ciphertext_file)
 
     t0 = time.perf_counter()
     plain_blocks = [rsa.decrypt(priv, c) for c in blocks]
