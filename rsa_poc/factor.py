@@ -1,4 +1,17 @@
-"""Pollard's rho factoring of semiprimes."""
+"""Pollard's rho factoring of semiprimes.
+
+Two cycle-detection variants are supported via the `algorithm` parameter of
+`pollard_rho`:
+
+- "floyd"  -- classic tortoise-and-hare: tortoise steps once per iteration,
+              hare steps twice, one gcd per iteration. Simple to understand.
+- "brent"  -- (default) hare advances in power-of-2 epochs, gcds are batched
+              over 128 step-pairs. ~2-3x faster at the n sizes in this PoC
+              because gcd dominates per-iteration cost.
+
+Both variants share the same outer scaffolding (precheck for primes, restart
+on degenerate `gcd == n`, post-check that both factors are prime and distinct).
+"""
 
 from __future__ import annotations
 
@@ -7,10 +20,29 @@ from math import gcd
 
 from rsa_poc.primes import is_prime
 
+ALGORITHMS = ("brent", "floyd")
+DEFAULT_ALGORITHM = "brent"
 
 # Batch size for accumulating |x - y| products before each gcd call. gcd dominates
 # per-iteration cost for the n sizes in this PoC, so batching is the speedup.
 _BRENT_BATCH = 128
+
+
+def _floyd_attempt(n: int, rng: random.Random) -> int | None:
+    # Classic Pollard's rho with Floyd's cycle detection:
+    # tortoise x steps once, hare y steps twice, one gcd per step.
+    x = rng.randrange(2, n - 1)
+    y = x
+    c = rng.randrange(1, n - 1)
+    d = 1
+    while d == 1:
+        x = (x * x + c) % n
+        y = (y * y + c) % n
+        y = (y * y + c) % n
+        d = gcd(abs(x - y), n)
+    if d == n:
+        return None
+    return d
 
 
 def _brent_attempt(n: int, rng: random.Random) -> int | None:
@@ -53,16 +85,25 @@ def _brent_attempt(n: int, rng: random.Random) -> int | None:
     return g
 
 
-def pollard_rho(n: int, rng: random.Random | None = None) -> tuple[int, int]:
+def pollard_rho(
+    n: int,
+    rng: random.Random | None = None,
+    algorithm: str = DEFAULT_ALGORITHM,
+) -> tuple[int, int]:
+    if algorithm not in ALGORITHMS:
+        raise ValueError(
+            f"unknown algorithm {algorithm!r}; choose one of {ALGORITHMS}"
+        )
     if n < 4:
         raise ValueError(f"n={n} too small to factor as a semiprime")
     if is_prime(n):
         raise ValueError(f"n={n} is prime; nothing to factor")
     if rng is None:
         rng = random.Random()
+    attempt = _brent_attempt if algorithm == "brent" else _floyd_attempt
     factor = None
     for _ in range(64):
-        factor = _brent_attempt(n, rng)
+        factor = attempt(n, rng)
         if factor is not None:
             break
     if factor is None:

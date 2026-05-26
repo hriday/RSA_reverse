@@ -42,6 +42,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     f = sub.add_parser("factor", help="factor n from a public key (prints p, q)")
     f.add_argument("--key", required=True, type=Path)
+    f.add_argument(
+        "--algorithm",
+        choices=list(factor_mod.ALGORITHMS),
+        default=factor_mod.DEFAULT_ALGORITHM,
+        help="cycle-detection variant of Pollard's rho (default: %(default)s)",
+    )
     f.add_argument("--verbose", action="store_true")
     f.add_argument("--seed", type=int)
     f.set_defaults(func=_cmd_factor)
@@ -50,6 +56,12 @@ def _build_parser() -> argparse.ArgumentParser:
     b.add_argument("--key", required=True, type=Path)
     b.add_argument("--ciphertext-file", required=True, type=Path)
     b.add_argument("--out", type=Path)
+    b.add_argument(
+        "--algorithm",
+        choices=list(factor_mod.ALGORITHMS),
+        default=factor_mod.DEFAULT_ALGORITHM,
+        help="cycle-detection variant of Pollard's rho (default: %(default)s)",
+    )
     b.add_argument("--verbose", action="store_true")
     b.add_argument("--seed", type=int)
     b.set_defaults(func=_cmd_break)
@@ -100,12 +112,12 @@ def _cmd_factor(args) -> int:
     pub = keyfile.load_public(args.key)
     rng = random.Random(args.seed) if args.seed is not None else None
     t0 = time.perf_counter()
-    p, q = factor_mod.pollard_rho(pub["n"], rng=rng)
+    p, q = factor_mod.pollard_rho(pub["n"], rng=rng, algorithm=args.algorithm)
     elapsed = time.perf_counter() - t0
     print(f"n = {pub['n']}")
     print(f"p = {p}")
     print(f"q = {q}")
-    print(f"factored in {elapsed:.4f}s")
+    print(f"factored in {elapsed:.4f}s using {args.algorithm}")
     if args.verbose:
         sys.stderr.write(f"# n bit length: {pub['n'].bit_length()}\n")
     return 0
@@ -117,7 +129,7 @@ def _cmd_break(args) -> int:
     rng = random.Random(args.seed) if args.seed is not None else None
 
     t0 = time.perf_counter()
-    p, q = factor_mod.pollard_rho(pub["n"], rng=rng)
+    p, q = factor_mod.pollard_rho(pub["n"], rng=rng, algorithm=args.algorithm)
     t_factor = time.perf_counter() - t0
 
     t0 = time.perf_counter()
@@ -139,8 +151,8 @@ def _cmd_break(args) -> int:
             sys.stdout.write("\n")
 
     sys.stderr.write(
-        f"# timing: factor={t_factor:.4f}s  derive_d={t_derive:.6f}s  "
-        f"decrypt={t_decrypt:.6f}s\n"
+        f"# timing: factor={t_factor:.4f}s ({args.algorithm})  "
+        f"derive_d={t_derive:.6f}s  decrypt={t_decrypt:.6f}s\n"
     )
     if args.verbose:
         sys.stderr.write(f"# recovered p={p}  q={q}\n")

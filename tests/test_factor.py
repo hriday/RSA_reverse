@@ -1,6 +1,6 @@
 import unittest
 
-from rsa_poc.factor import pollard_rho
+from rsa_poc.factor import ALGORITHMS, pollard_rho
 from rsa_poc.rsa import keygen
 
 
@@ -61,6 +61,27 @@ class TestPollardRhoRejections(unittest.TestCase):
     def test_rejects_product_of_three_primes(self):
         with self.assertRaises(ValueError):
             pollard_rho(101 * 103 * 107)
+
+    def test_rejects_unknown_algorithm(self):
+        with self.assertRaises(ValueError):
+            pollard_rho(101 * 103, algorithm="schroeppel")
+
+
+class TestAlgorithmDispatch(unittest.TestCase):
+    # Both variants must factor the same hand-picked pairs.
+    HAND_PICKED = [(100003, 100019), (100003, 999983), (101, 103), (541, 977)]
+
+    def test_each_algorithm_recovers_hand_picked_pairs(self):
+        for algorithm in ALGORITHMS:
+            for p, q in self.HAND_PICKED:
+                with self.subTest(algorithm=algorithm, p=p, q=q):
+                    a, b = pollard_rho(p * q, algorithm=algorithm)
+                    self.assertEqual({a, b}, {p, q})
+
+    def test_floyd_recovers_six_digit_keypair(self):
+        _, priv = keygen(digits=6)
+        a, b = pollard_rho(priv["n"], algorithm="floyd")
+        self.assertEqual({a, b}, {priv["p"], priv["q"]})
 
 
 if __name__ == "__main__":
