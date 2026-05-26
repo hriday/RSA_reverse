@@ -60,10 +60,14 @@ def _build_parser() -> argparse.ArgumentParser:
 def _cmd_generate(args) -> int:
     if args.digits < 2:
         raise ValueError(f"--digits must be >= 2, got {args.digits}")
-    if args.digits > 6:
+    if args.digits > 32:
+        raise ValueError(f"--digits must be <= 32, got {args.digits}")
+    if args.digits > 14:
         sys.stderr.write(
-            f"warning: --digits={args.digits} is beyond the PoC's tuned range; "
-            "factoring may be slow.\n"
+            f"warning: --digits={args.digits} is beyond the PoC's tuned range (<=14). "
+            "key generation is fast, but `factor`/`break` use Pollard's rho (Brent's "
+            "variant) which scales as ~sqrt(p) -- expect seconds at 14-15 digits, "
+            "minutes at 16, hours at 18, and effectively forever at 24+.\n"
         )
     pub, priv = rsa.keygen(digits=args.digits, e=args.e)
     args.out_dir.mkdir(parents=True, exist_ok=True)

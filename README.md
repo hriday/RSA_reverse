@@ -1,6 +1,6 @@
 # RSA Small-Prime PoC
 
-A teaching proof-of-concept that demonstrates why RSA must not use small primes. Generates an RSA keypair from 3–6 digit primes, encrypts a message, then recovers the plaintext from only the public key and ciphertext by factoring `n` with Pollard's rho.
+A teaching proof-of-concept that demonstrates why RSA must not use small primes. Generates an RSA keypair from small primes (3 to 32 digits, tuned for fast demos up to 14), encrypts a message, then recovers the plaintext from only the public key and ciphertext by factoring `n` with Pollard's rho (Brent's variant).
 
 > **Not for production use.** This implements textbook RSA with no padding (no OAEP, no PKCS), small primes, and no side-channel resistance. The whole point is that an attacker can break it on a laptop in milliseconds.
 
@@ -41,7 +41,7 @@ python -m rsa_poc break --key keys/pub.json --ciphertext-file ciphertext.txt
 
 | Subcommand | Required | Optional |
 |---|---|---|
-| `generate` | `--out-dir` | `--digits N` (default 6, range 3–6; >6 warns), `--e E` (default 65537) |
+| `generate` | `--out-dir` | `--digits N` (default 6, range 2–32; >14 prints a warning about factoring cost), `--e E` (default 65537) |
 | `encrypt` | `--key`, `--out`, one of `--message`/`--message-file` | |
 | `factor` | `--key` | `--verbose`, `--seed S` |
 | `break` | `--key`, `--ciphertext-file` | `--out`, `--verbose`, `--seed S` |
@@ -50,7 +50,7 @@ python -m rsa_poc break --key keys/pub.json --ciphertext-file ciphertext.txt
 
 1. **Keygen.** Two random `d`-digit primes `p`, `q` via Miller–Rabin. `n = p*q`, `φ = (p-1)(q-1)`, `d = e⁻¹ mod φ` (with `e = 65537`).
 2. **Encrypt.** Plaintext UTF-8 bytes are split into blocks of `(n.bit_length() - 1) // 8` bytes so each block integer `m < n`. Ciphertext blocks are `c = mᵉ mod n`.
-3. **Factor.** Pollard's rho with `f(x) = x² + c mod n` and Floyd's cycle detection. Restart with a fresh `c` if `gcd(|x-y|, n) == n`. For 6-digit primes, finishes in well under a second.
+3. **Factor.** Pollard's rho with `f(x) = x² + c mod n` and Brent's cycle-detection variant — the hare advances in power-of-2 epochs and one batched gcd covers up to 128 step-pairs. Restart with a fresh `c` if `gcd(|x-y|, n) == n`. Cost scales as ~√p: microseconds at 6 digits, ~0.2 s at 12, seconds at 14, minutes at 16, infeasible beyond ~20.
 4. **Break.** Factor `n` → recover `p, q` → compute `d` → decrypt each ciphertext block → reassemble bytes → decode UTF-8.
 
 ## Project structure

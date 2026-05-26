@@ -19,7 +19,7 @@ A Python proof-of-concept demonstrating why RSA must not use small primes. The P
 
 - **Standard library only.** No `pip install` step. Allowed modules: `argparse`, `json`, `math`, `secrets`, `random`, `time`, `sys`, `pathlib`, `unittest`.
 - **Python 3.8+.** Required for `pow(e, -1, m)` modular inverse.
-- **Prime size range:** 3 to 6 digits by default. `--digits` accepts larger values but stderr-warns the user.
+- **Prime size range:** 3 to 14 digits is the tuned range where `factor`/`break` finish in seconds. `--digits` accepts up to 32 with a stderr warning beyond 14 explaining the cost curve. Values >32 are rejected.
 
 ## Architecture
 
@@ -59,7 +59,7 @@ Dependencies flow one way: `cli → {rsa, factor, primes, keyfile}`, `rsa → pr
 - `blocks_to_text(blocks: list[int], n: int, total_len: int) -> str` — inverse of `text_to_blocks`. Reads `total_len` bytes total across blocks, then decodes UTF-8.
 
 ### `factor.py`
-- `pollard_rho(n: int) -> tuple[int, int]` — returns `(p, q)` with `p <= q` and `p * q == n`. Uses `f(x) = (x² + c) mod n` with random `c`, Floyd's cycle detection, restart on `gcd == n`. Raises `ValueError` if `n < 4`, if `is_prime(n)` (precheck), if the returned factor is itself composite (`n` had three or more prime factors), or if `p == q` (`n` was a prime square).
+- `pollard_rho(n: int) -> tuple[int, int]` — returns `(p, q)` with `p <= q` and `p * q == n`. Uses `f(x) = (x² + c) mod n` with random `c` and Brent's cycle-detection variant (hare advances in power-of-2 epochs, batched gcd over 128-step chunks; ~2-3× faster than Floyd's at our prime sizes). Restarts with fresh `c` on `gcd == n`. Raises `ValueError` if `n < 4`, if `is_prime(n)` (precheck), if the returned factor is itself composite (`n` had three or more prime factors), or if `p == q` (`n` was a prime square).
 
 ### `keyfile.py`
 - `save_public(path, pub)` / `load_public(path) -> PublicKey`

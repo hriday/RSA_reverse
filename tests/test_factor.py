@@ -22,6 +22,11 @@ class TestPollardRhoHandPicked(unittest.TestCase):
     def test_three_digit_primes(self):
         self._assert_factors(541, 977)
 
+    def test_ten_digit_primes(self):
+        # Proves Brent's variant scales past the 6-digit demo range.
+        # Should finish in well under a second on any reasonable machine.
+        self._assert_factors(2147483647, 2147483659)
+
 
 class TestPollardRhoProperty(unittest.TestCase):
     def test_recovers_keypair_factors(self):
@@ -29,6 +34,14 @@ class TestPollardRhoProperty(unittest.TestCase):
             _, priv = keygen(digits=6)
             a, b = pollard_rho(priv["n"])
             self.assertEqual({a, b}, {priv["p"], priv["q"]})
+
+    def test_recovers_eight_digit_keypair(self):
+        # One iteration at 8-digit primes — exercises Brent at a size the
+        # 6-digit property test doesn't reach. ~10x more work than 6-digit
+        # but still fast.
+        _, priv = keygen(digits=8)
+        a, b = pollard_rho(priv["n"])
+        self.assertEqual({a, b}, {priv["p"], priv["q"]})
 
 
 class TestPollardRhoRejections(unittest.TestCase):
