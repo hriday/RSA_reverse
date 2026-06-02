@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from rsa_poc import pem
+
 _PUB_FIELDS = ("n", "e")
 _PRIV_FIELDS = ("n", "e", "d", "p", "q")
 
@@ -18,7 +20,17 @@ def save_private(path: str | Path, priv: dict) -> None:
 
 
 def load_public(path: str | Path) -> dict:
-    return _read_required(path, _PUB_FIELDS)
+    p = Path(path)
+    try:
+        text = p.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise ValueError(f"{p}: file not found") from exc
+    if text.lstrip().startswith("-----BEGIN"):
+        try:
+            return pem.parse_public_pem(text)
+        except ValueError as exc:
+            raise ValueError(f"{p}: {exc}") from exc
+    return _required_from_text(p, text, _PUB_FIELDS)
 
 
 def load_private(path: str | Path) -> dict:
@@ -69,6 +81,10 @@ def _read_required(path: str | Path, fields: tuple[str, ...]) -> dict:
         text = p.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
         raise ValueError(f"{p}: file not found") from exc
+    return _required_from_text(p, text, fields)
+
+
+def _required_from_text(p: Path, text: str, fields: tuple[str, ...]) -> dict:
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
