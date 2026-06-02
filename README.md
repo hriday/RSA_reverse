@@ -30,7 +30,21 @@ python -m rsa_poc factor --key keys/pub.json
 # p = 174121
 # q = 557857
 # factored in 0.0001s using brent
+```
 
+`--key` also accepts PEM public keys, not just `pub.json`:
+
+```bash
+# Both -----BEGIN RSA PUBLIC KEY----- (PKCS#1) and
+# -----BEGIN PUBLIC KEY----- (SPKI) are recognized automatically.
+python -m rsa_poc factor --key somekey.pem
+```
+
+> The PEM is only parsed for `n` and `e`. Large moduli (e.g. a real 512-bit key)
+> load fine but Pollard's rho will never finish on them — this tool only cracks
+> the small-prime keys the PoC is built around.
+
+```bash
 # Recover the full private key from the public key alone (no ciphertext needed)
 python -m rsa_poc break --key keys/pub.json
 # n = 97134618697
@@ -77,6 +91,7 @@ rsa_poc/
 ├── rsa.py        # keygen, encrypt, decrypt, derive_private_key, text<->blocks
 ├── factor.py     # pollard_rho (semiprimes only)
 ├── keyfile.py    # JSON I/O for pub.json, priv.json, ciphertext.txt
+├── pem.py        # parse RSA public keys from PEM (PKCS#1 + SPKI), stdlib only
 ├── cli.py        # argparse: generate / encrypt / factor / break
 └── __main__.py   # python -m rsa_poc
 
@@ -106,6 +121,13 @@ docs/superpowers/
 192847
 80213
 6512
+```
+
+PEM public keys (input only) — both headers are accepted wherever `--key` is used:
+
+```
+-----BEGIN RSA PUBLIC KEY-----   (PKCS#1 RSAPublicKey)
+-----BEGIN PUBLIC KEY-----       (SPKI SubjectPublicKeyInfo, RSA only)
 ```
 
 ## Running the tests
