@@ -69,5 +69,28 @@ class TestSpki(unittest.TestCase):
         )
 
 
+class TestErrors(unittest.TestCase):
+    def test_truncated_key_raises(self):
+        with self.assertRaises(ValueError) as cm:
+            pem.parse_public_pem(TRUNCATED_PEM)
+        self.assertIn("declared length exceeds", str(cm.exception))
+
+    def test_non_rsa_oid_raises(self):
+        with self.assertRaises(ValueError) as cm:
+            pem.parse_public_pem(EC_SPKI_PEM)
+        self.assertIn("not an RSA key", str(cm.exception))
+
+    def test_no_markers_raises(self):
+        with self.assertRaises(ValueError) as cm:
+            pem.parse_public_pem("just some text, no PEM here")
+        self.assertIn("not a valid PEM", str(cm.exception))
+
+    def test_bad_base64_raises(self):
+        bad = "-----BEGIN RSA PUBLIC KEY-----\n!!!!not base64!!!!\n-----END RSA PUBLIC KEY-----\n"
+        with self.assertRaises(ValueError) as cm:
+            pem.parse_public_pem(bad)
+        self.assertIn("base64", str(cm.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
