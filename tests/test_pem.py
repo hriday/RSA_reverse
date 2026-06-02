@@ -1,6 +1,9 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
-from rsa_poc import pem
+from rsa_poc import keyfile, pem
 
 # Same 512-bit RSA key, two encodings. Both must decode to FIXTURE_N / 65537.
 PKCS1_PEM = """\
@@ -90,6 +93,32 @@ class TestErrors(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             pem.parse_public_pem(bad)
         self.assertIn("base64", str(cm.exception))
+
+
+class TestLoadPublicDispatch(unittest.TestCase):
+    def _write(self, name, text):
+        d = tempfile.mkdtemp()
+        p = Path(d) / name
+        p.write_text(text, encoding="utf-8")
+        return p
+
+    def test_load_public_reads_pem(self):
+        p = self._write("pub.pem", PKCS1_PEM)
+        self.assertEqual(keyfile.load_public(p), {"n": FIXTURE_N, "e": FIXTURE_E})
+
+    def test_load_public_reads_spki_pem(self):
+        p = self._write("pub.pem", SPKI_PEM)
+        self.assertEqual(keyfile.load_public(p), {"n": FIXTURE_N, "e": FIXTURE_E})
+
+    def test_load_public_still_reads_json(self):
+        p = self._write("pub.json", json.dumps({"n": 97134618697, "e": 65537}))
+        self.assertEqual(keyfile.load_public(p), {"n": 97134618697, "e": 65537})
+
+    def test_load_public_pem_error_is_prefixed(self):
+        p = self._write("bad.pem", TRUNCATED_PEM)
+        with self.assertRaises(ValueError) as cm:
+            keyfile.load_public(p)
+        self.assertIn(str(p), str(cm.exception))
 
 
 if __name__ == "__main__":
