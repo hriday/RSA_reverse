@@ -56,5 +56,18 @@ class TestPkcs1(unittest.TestCase):
         self.assertEqual(result["e"], 65537)
 
 
+class TestSpki(unittest.TestCase):
+    def test_spki_round_trip(self):
+        result = pem.parse_public_pem(SPKI_PEM)
+        self.assertEqual(result, {"n": FIXTURE_N, "e": FIXTURE_E})
+
+    def test_spki_matches_pkcs1(self):
+        # Same key, two encodings -> identical n, e.
+        self.assertEqual(
+            pem.parse_public_pem(SPKI_PEM),
+            pem.parse_public_pem(PKCS1_PEM),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

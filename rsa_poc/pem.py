@@ -8,6 +8,9 @@ import binascii
 _PKCS1_LABEL = "RSA PUBLIC KEY"
 _SPKI_LABEL = "PUBLIC KEY"
 
+# RSA encryption algorithm OID 1.2.840.113549.1.1.1, DER-encoded value bytes.
+_RSA_OID = bytes([0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01])
+
 
 def parse_public_pem(text: str) -> dict:
     """Return {"n": int, "e": int} from a PEM RSA public key.
@@ -85,3 +88,23 @@ def _parse_pkcs1(der: bytes) -> dict:
     if n <= 0 or e <= 0:
         raise ValueError("malformed DER: non-positive n or e")
     return {"n": n, "e": e}
+
+
+def _parse_spki(der: bytes) -> dict:
+    tag, body, _ = _read_tlv(der, 0)
+    if tag != 0x30:
+        raise ValueError("malformed DER: expected SEQUENCE for SubjectPublicKeyInfo")
+    tag_alg, alg, off = _read_tlv(body, 0)
+    if tag_alg != 0x30:
+        raise ValueError("malformed DER: expected AlgorithmIdentifier SEQUENCE")
+    tag_oid, oid, _ = _read_tlv(alg, 0)
+    if tag_oid != 0x06:
+        raise ValueError("malformed DER: expected algorithm OID")
+    if oid != _RSA_OID:
+        raise ValueError("not an RSA key (unexpected algorithm OID)")
+    tag_bs, bits, _ = _read_tlv(body, off)
+    if tag_bs != 0x03:
+        raise ValueError("malformed DER: expected BIT STRING")
+    if not bits or bits[0] != 0x00:
+        raise ValueError("malformed DER: unexpected BIT STRING padding")
+    return _parse_pkcs1(bits[1:])
